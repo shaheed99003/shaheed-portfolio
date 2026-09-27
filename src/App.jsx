@@ -69,17 +69,42 @@ export default function App(){
 
   useEffect(()=>{
     if(isAdmin) return
-    const lenis = new Lenis({ duration: 1.4, easing: t=>Math.min(1,1.001-Math.pow(2,-10*t)), touchMultiplier: 1.5, smoothTouch: false })
+
+    // FIXED: Disable Lenis on mobile - this was causing 2 finger glitch
+    const isMobile = window.innerWidth < 768 || 'ontouchstart' in window
+    if(isMobile){
+      const onScroll = () => {
+        const p = window.scrollY / (document.documentElement.scrollHeight - window.innerHeight)
+        setProgress(p)
+        ScrollTrigger.update()
+      }
+      window.addEventListener('scroll', onScroll, { passive: true })
+      return () => window.removeEventListener('scroll', onScroll)
+    }
+
+    const lenis = new Lenis({
+      duration: 1.4,
+      easing: t=>Math.min(1,1.001-Math.pow(2,-10*t)),
+      touchMultiplier: 1.5,
+      smoothTouch: false,
+      syncTouch: false
+    })
     const raf = (time) => { lenis.raf(time); requestAnimationFrame(raf) }
     requestAnimationFrame(raf)
-    lenis.on('scroll', ()=>{ const p = window.scrollY / (document.documentElement.scrollHeight - window.innerHeight); setProgress(p); ScrollTrigger.update() })
+    lenis.on('scroll', ()=>{
+      const p = window.scrollY / (document.documentElement.scrollHeight - window.innerHeight)
+      setProgress(p)
+      ScrollTrigger.update()
+    })
     return ()=> lenis.destroy()
   },[isAdmin])
 
   useEffect(()=>{
     const onImgClick = (e) => {
       const el = e.target
-      if (el.tagName === 'IMG' && el.src &&!el.closest('nav')) { if(el.width > 100){ setFullImg(el.src) } }
+      if (el.tagName === 'IMG' && el.src &&!el.closest('nav')) {
+        if(el.width > 100){ setFullImg(el.src) }
+      }
     }
     document.addEventListener('click', onImgClick)
     return () => document.removeEventListener('click', onImgClick)
@@ -92,8 +117,11 @@ export default function App(){
     <FilmGrain />
     <Navbar progress={progress} />
     <CustomCursor />
-    <div className="canvas" style={{ position: 'fixed', inset: 0, width: '100vw', height: '100vh', height: '100dvh' }}><Scene progress={progress} /></div>
-    <main className="content" style={{ width: '100%', maxWidth: '100vw', overflowX: 'hidden' }}>
+    {/* FIXED: pointerEvents none + zIndex */}
+    <div className="canvas" style={{ position: 'fixed', inset: 0, width: '100vw', height: '100vh', pointerEvents: 'none', zIndex: 0 }}>
+      <Scene progress={progress} />
+    </div>
+    <main className="content" style={{ width: '100%', maxWidth: '100vw', overflowX: 'hidden', position: 'relative', zIndex: 2 }}>
       <FadeSection><Hero /></FadeSection>
       <FadeSection><About /></FadeSection>
       <FadeSection><Skills /></FadeSection>
